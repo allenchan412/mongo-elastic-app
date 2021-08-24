@@ -1,0 +1,58 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo
+    container_name: mongo
+    restart: unless-stopped
+    ports:
+      - 27017:27017
+    networks:
+      - elastic
+  es01:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    container_name: es01
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+      - 9300:9300
+    networks:
+      - elastic
+  web:
+    build: .
+    container_name: mongo-elastic
+    expose:
+      - 8080
+    command: mvn clean spring-boot:run
+    restart: always
+    environment:
+      - SPRING.DATA.MONGODB.AUTENTICTION-DATABASE=admin
+      - SPRING.DATA.MONGODB..AUTO-INDEX-CREATION=true
+      - SPRING.DATA.MONGODB.PORT=27017
+      - SPRING.DATA.MONGODB.HOST=mongo
+      - SPRING.DATA.MONGODB.DATABASE=demo
+      - SPRING.ELASTICSEARCH.REST.URIS=es01:9200
+    ports:
+      - 8080:8080
+    depends_on:
+      - mongo
+      - es01
+    networks:
+      - elastic
+
+volumes:
+  data01:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
